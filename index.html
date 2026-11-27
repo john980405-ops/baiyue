@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#f4eee1">
+<meta name="description" content="陪你爬完台灣百岳：進度、行程、離線地圖、GPX、爬山手記與高山生態。">
+<title>百岳行</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icons/icon-192.png">
+<link rel="apple-touch-icon" href="icons/icon-192.png">
+<link href="vendor/lxgw/result.min.css" rel="stylesheet">
+<link rel="stylesheet" href="vendor/leaflet/leaflet.css">
+<link rel="stylesheet" href="css/app.css">
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs>
+  <filter id="rough" x="-5%" y="-5%" width="110%" height="110%"><feTurbulence type="fractalNoise" baseFrequency="0.035" numOctaves="2" seed="3"/><feDisplacementMap in="SourceGraphic" scale="2.6"/></filter>
+  <filter id="wash" x="-10%" y="-10%" width="120%" height="120%"><feTurbulence type="fractalNoise" baseFrequency="0.022" numOctaves="3" seed="8" result="n"/><feDisplacementMap in="SourceGraphic" in2="n" scale="9" result="d"/><feGaussianBlur in="d" stdDeviation="0.6"/></filter>
+</defs></svg>
+<div id="app"><main id="view" tabindex="-1"></main></div>
+<nav class="tabs" aria-label="主選單">
+  <a href="#home" data-t="home"><svg viewBox="0 0 24 24"><path d="M3 20 L10 8 L13 13 L16 9 L21 20 Z"/></svg>首頁</a>
+  <a href="#peaks" data-t="peaks"><svg viewBox="0 0 24 24"><path d="M12 3 L21 19 H3 Z"/></svg>百岳</a>
+  <a href="#map" data-t="map"><svg viewBox="0 0 24 24"><path d="M3 6 L9 4 L15 6 L21 4 V18 L15 20 L9 18 L3 20 Z M9 4 V18 M15 6 V20"/></svg>地圖</a>
+  <a href="#trips" data-t="trips"><svg viewBox="0 0 24 24"><path d="M5 3 H17 A2 2 0 0 1 19 5 V21 L12 17 L5 21 Z"/></svg>手記</a>
+  <a href="#prep" data-t="prep"><svg viewBox="0 0 24 24"><path d="M6 7 H18 L17 21 H7 Z M9 7 V5 A3 3 0 0 1 15 5 V7"/></svg>準備</a>
+</nav>
+<div id="toast" role="status" aria-live="polite"></div>
+<div id="lightbox" hidden><img alt=""><button class="btn" id="lbClose">關閉</button></div>
+<script src="vendor/leaflet/leaflet.js"></script>
+<script type="module" src="js/app.js"></script>
+</body>
+</html>
