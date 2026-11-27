@@ -1,5 +1,5 @@
 // 離線用：App 本體預先快取，地圖圖磚看過或下載過就留在手機
-const APP = 'baiyue-app-v5';
+const APP = 'baiyue-app-v6';
 const TILES = 'baiyue-tiles-v1';
 const FONTS = 'baiyue-fonts-v1';
 const SHELL = [
@@ -11,7 +11,8 @@ const SHELL = [
 ];
 
 self.addEventListener('install', e => {
-  e.waitUntil(caches.open(APP).then(c => c.addAll(SHELL)).then(() => self.skipWaiting()));
+  // 用 cache:'reload' 跳過瀏覽器快取，確保裝到的是最新版
+  e.waitUntil(caches.open(APP).then(c => c.addAll(SHELL.map(u => new Request(u, { cache: 'reload' })))).then(() => self.skipWaiting()));
 });
 self.addEventListener('activate', e => {
   e.waitUntil(caches.keys().then(ks => Promise.all(ks.filter(k => k.startsWith('baiyue-app-') && k !== APP).map(k => caches.delete(k)))).then(() => self.clients.claim()));
@@ -40,7 +41,7 @@ self.addEventListener('fetch', e => {
     // 先用快取（離線可開），背景更新
     e.respondWith(caches.open(APP).then(async c => {
       const hit = await c.match(e.request, { ignoreSearch: true });
-      const net = fetch(e.request).then(r => { if (r.ok) c.put(e.request, r.clone()); return r; }).catch(() => null);
+      const net = fetch(e.request.url, { cache: 'no-cache' }).then(r => { if (r.ok) c.put(e.request, r.clone()); return r; }).catch(() => null);
       return hit || (await net) || (await c.match('./index.html'));
     }));
   }
