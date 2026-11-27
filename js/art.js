@@ -27,19 +27,19 @@ function pines(r, W, base, n) {
 
 export function scene(seed, h = 3300, { W = 900, H = 380, label = '', small = false } = {}) {
   const r = rng(seed * 9973 + 7);
-  const k = Math.min(1, Math.max(0, (h - 2950) / 1000));
+  const k = h >= 2950 ? Math.min(1, (h - 2950) / 1000) : Math.max(-0.55, h / 2950 * 0.55 - 0.55);
   const peak = { x: 0.32 + r() * 0.36, w: 0.2 + r() * 0.1, h: 0.7 + k * 0.7 };
   const far = ridgePts(r, W, H * 0.5, H * 0.16, 50), mid = ridgePts(r, W, H * 0.6, H * 0.14, 60);
   const main = ridgePts(r, W, H * 0.8, H * 0.22, 80, peak), near = ridgePts(r, W, H * 0.93, H * 0.06, 40);
   const top = main.reduce((a, b) => b[1] < a[1] ? b : a);
   const hatch = small ? '' : Array.from({ length: 7 }, (_, i) => { const x0 = top[0] + 8 + i * 13, y0 = top[1] + 14 + i * 9; return `M${x0.toFixed(0)} ${y0.toFixed(0)} l${(18 + r() * 12).toFixed(0)} ${(30 + r() * 20).toFixed(0)}`; }).join(' ');
-  const sunx = W * (peak.x > 0.5 ? 0.36 + r() * 0.08 : 0.58 + r() * 0.08);
+  const sunx = W * (0.6 + r() * 0.08);
   const clouds = Array.from({ length: small ? 3 : 7 }, () => `<ellipse cx="${(r() * W).toFixed(0)}" cy="${(H * 0.6 + r() * 22).toFixed(0)}" rx="${(70 + r() * 120).toFixed(0)}" ry="${(10 + r() * 10).toFixed(0)}"/>`).join('');
   const sw = small ? 1.4 : 2.2;
   return `<svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="xMidYMid slice" role="img" aria-label="${label}">
 <rect width="${W}" height="${H}" fill="var(--paper)"/>
 <defs><linearGradient id="g${seed}${small ? 's' : ''}" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="var(--wsky2)" stop-opacity=".7"/><stop offset=".62" stop-color="var(--wsky)" stop-opacity=".75"/><stop offset="1" stop-color="var(--wsky)" stop-opacity=".2"/></linearGradient></defs><rect x="-30" y="-30" width="${W + 60}" height="${(H * 0.75).toFixed(0)}" fill="url(#g${seed}${small ? 's' : ''})" filter="url(#wash)"/>
-<circle cx="${sunx.toFixed(0)}" cy="${(H * (small ? 0.22 : 0.17)).toFixed(0)}" r="${small ? 14 : 20}" fill="var(--wsun)" opacity=".85" filter="url(#wash)"/><circle cx="${sunx.toFixed(0)}" cy="${(H * (small ? 0.22 : 0.17)).toFixed(0)}" r="${small ? 14 : 20}" fill="none" stroke="var(--ink2)" stroke-width="1.2" opacity=".6" filter="url(#rough)"/>
+<circle cx="${sunx.toFixed(0)}" cy="${(H * (small ? 0.22 : 0.3)).toFixed(0)}" r="${small ? 14 : 20}" fill="var(--wsun)" opacity=".85" filter="url(#wash)"/><circle cx="${sunx.toFixed(0)}" cy="${(H * (small ? 0.22 : 0.3)).toFixed(0)}" r="${small ? 14 : 20}" fill="none" stroke="var(--ink2)" stroke-width="1.2" opacity=".6" filter="url(#rough)"/>
 <path d="${fill(far, W, H)}" fill="var(--w1)" opacity=".55" filter="url(#wash)"/>
 <path d="${line(far)}" fill="none" stroke="var(--ink2)" stroke-width="1" opacity=".35" filter="url(#rough)"/>
 <path d="${fill(mid, W, H)}" fill="var(--w2)" opacity=".6" filter="url(#wash)"/>

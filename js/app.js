@@ -1,4 +1,4 @@
-import { PEAKS, BY, PARK, DIFF, DORD, FAME, STORY, ROUTES, GEAR, zoneOf, speciesFor } from './data.js';
+import { PEAKS, MINI, ALL, BY, PARK, DIFF, DORD, FAME, STORY, MINI_STORY, ROUTES, GEAR, zoneOf, speciesFor, isMini, regionOf, REGIONS } from './data.js';
 import { kv, trips, photos, tracks, uid, persist, usage, shrink, exportAll, importAll } from './store.js';
 import { parseGPX, simplify, stats, toGPX, fmtKm, fmtH } from './gpx.js';
 import { LAYERS, makeMap, drawTrack, Tracker, offRoute, tilesFor, prefetch } from './map.js';
@@ -36,38 +36,41 @@ async function shareText(title, text) {
 function nextRoute() {
   return ROUTES.map(r => ({ ...r, left: r.p.filter(x => !S.done[x]) })).find(r => r.left.length);
 }
-function meters() {
+function meters(kind = 'big') {
+  if (kind === 'mini') return REGIONS.map(g => { const L = MINI.filter(x => regionOf(x) === g), n = L.filter(x => S.done[x.r]).length;
+    return `<div class="meter"><span>${g}</span><b><i style="width:${n / L.length * 100}%;background:var(--w3)"></i></b><span>${n}/${L.length}</span></div>`; }).join('');
   const done = PEAKS.filter(x => S.done[x.r]);
   const famN = Object.keys(FAME).filter(r => S.done[r]).length;
   return ['A', 'B', 'C', 'C+'].map(d => { const all = PEAKS.filter(x => x.d === d).length, n = done.filter(x => x.d === d).length;
     return `<div class="meter"><span>${d} ${DIFF[d].t}</span><b><i style="width:${n / all * 100}%;background:${DIFF[d].c}"></i></b><span>${n}/${all}</span></div>`; }).join('')
     + `<div class="meter"><span>五嶽三尖一奇</span><b><i style="width:${famN / 9 * 100}%;background:var(--rho)"></i></b><span>${famN}/9</span></div>`;
 }
-let bookOpen = false;
+let bookOpen = false, bookKind = 'big';
 function stampBook() {
-  const L = bookOpen ? PEAKS : PEAKS.slice(0, 18);
+  const src = bookKind === 'mini' ? MINI : PEAKS, L = bookOpen ? src : src.slice(0, 18);
   return `<div class="book" id="book">${L.map(x => { const d = S.done[x.r];
     return `<a class="slot ${d ? 'got' : ''}" href="#peak-${x.r}" aria-label="${x.r} ${esc(x.n)}${d ? ' 已登頂' : ''}">
-      <span class="no">${x.r}</span><b>${esc(x.n)}</b><span class="ht">${x.h.toLocaleString()} m</span>
+      <span class="no">${x.num}</span><b>${esc(x.n)}</b><span class="ht">${x.h.toLocaleString()} m</span>
       ${d ? `<span class="seal">登頂<small>${esc((d.date || '').slice(5).replace('-', '.'))}</small></span>` : ''}</a>`; }).join('')}</div>
     <button class="btn sm" id="bookMore" style="margin-top:12px">${bookOpen ? '收合' : '展開全部 100 格'}</button>`;
 }
 function bindBook() {
   const b = $('#bookMore'); if (!b) return;
   b.onclick = () => { bookOpen = !bookOpen; $('#bookWrap').innerHTML = stampBook(); bindBook(); };
+  $$('[data-bk]').forEach(t => t.onclick = () => { bookKind = t.dataset.bk; bookOpen = false; $$('[data-bk]').forEach(u => u.classList.toggle('on', u === t)); $('#bookWrap').innerHTML = stampBook(); $('#bookMeters').innerHTML = meters(bookKind); bindBook(); });
 }
 let installEvt = null;
 addEventListener('beforeinstallprompt', e => { e.preventDefault(); installEvt = e; const b = $('#install'); if (b) b.hidden = false; });
 
 async function vHome() {
-  const n = Object.keys(S.done).length, sum = PEAKS.filter(x => S.done[x.r]).reduce((a, x) => a + x.h, 0);
+  const n = PEAKS.filter(x => S.done[x.r]).length, nm = MINI.filter(x => S.done[x.r]).length, sum = PEAKS.filter(x => S.done[x.r]).reduce((a, x) => a + x.h, 0);
   const nx = nextRoute(), T = (await trips.all()).sort((a, b) => b.date.localeCompare(a.date));
   view.innerHTML = `
   <section class="scene hero">${scene(1, 3952, { label: '黎明雲海上的稜線' })}
     <div class="over wrap" style="width:100%">
       <p style="margin:0 0 4px;font-weight:700;letter-spacing:.02em">百岳行</p>
       <div class="big">${n}<small> / 100 座</small></div>
-      <p style="margin:6px 0 0">${n ? `已經累積站上 ${sum.toLocaleString()} 公尺的山頂高度。` : '第一座百岳，從這裡開始。'}</p>
+      <p style="margin:6px 0 0">小百岳 ${nm} / 100 座${n ? ` · 百岳累積 ${sum.toLocaleString()} 公尺` : ''}</p>
     </div>
   </section>
   <div class="pad wrap stack">
@@ -77,7 +80,7 @@ async function vHome() {
       <h2 style="margin:2px 0 4px">${esc(nx.n)}</h2>
       <p style="margin:0">${esc(nx.t)}這趟可以再收 <b>${nx.left.length}</b> 座：${nx.left.map(r => esc(BY[r].n)).join('、')}</p></a>` : ''}
     <div class="row2"><a class="btn p" href="#trip-new">寫一篇爬山手記</a><a class="btn" href="#map">打開離線地圖</a></div>
-    <div class="card"><h2>登頂印章冊</h2><p class="mute" style="margin:-4px 0 12px">一格一座山，登頂就蓋上紅章。點格子看那座山。</p><div id="bookWrap">${stampBook()}</div><div style="margin-top:16px">${meters()}</div></div>
+    <div class="card"><h2>登頂印章冊</h2><div class="chips" style="margin:2px 0 10px"><button class="chip ${bookKind === 'big' ? 'on' : ''}" data-bk="big">百岳 ${n}/100</button><button class="chip ${bookKind === 'mini' ? 'on' : ''}" data-bk="mini">小百岳 ${nm}/100</button></div><p class="mute" style="margin:0 0 12px">一格一座山，登頂就蓋上紅章。點格子看那座山。</p><div id="bookWrap">${stampBook()}</div><div id="bookMeters" style="margin-top:16px">${meters(bookKind)}</div></div>
     ${T.length ? `<div><h2>最近的手記</h2><div class="trips" id="hTrips"></div></div>` : ''}
   </div>`;
   bindBook();
@@ -92,30 +95,31 @@ function vPeaks(tab) {
   if (tab) F.tab = tab;
   view.innerHTML = `<div class="pad wrap">
     <h1 style="margin:8px 0 14px">百岳</h1>
-    <div class="row2" style="margin-bottom:14px"><button class="btn ${F.tab === 'list' ? 'p' : ''}" data-tab="list">一百座山</button><button class="btn ${F.tab === 'routes' ? 'p' : ''}" data-tab="routes">行程組合</button></div>
+    <div class="seg" style="margin-bottom:14px"><button class="btn ${F.tab === 'list' ? 'p' : ''}" data-tab="list">百岳</button><button class="btn ${F.tab === 'mini' ? 'p' : ''}" data-tab="mini">小百岳</button><button class="btn ${F.tab === 'routes' ? 'p' : ''}" data-tab="routes">行程組合</button></div>
     <div id="pbody"></div></div>`;
-  $$('[data-tab]').forEach(b => b.onclick = () => { location.hash = b.dataset.tab === 'routes' ? '#peaks-routes' : '#peaks'; });
-  F.tab === 'routes' ? routesBody() : listBody();
+  $$('[data-tab]').forEach(b => b.onclick = () => { location.hash = { routes: '#peaks-routes', mini: '#peaks-mini', list: '#peaks' }[b.dataset.tab]; });
+  F.tab === 'routes' ? routesBody() : listBody(F.tab === 'mini');
 }
-function listBody() {
+function listBody(mini) {
+  if (mini !== F.mini) { F.mini = mini; F.d = ''; F.p = ''; }
   $('#pbody').innerHTML = `<input id="q" type="search" placeholder="搜尋山名、縣市" value="${esc(F.q)}" style="margin-bottom:8px">
   <div class="filters">
-    <select id="fd"><option value="">全部難度</option>${Object.keys(DIFF).map(k => `<option ${F.d === k ? 'selected' : ''}>${k}</option>`).join('')}</select>
+    ${mini ? `<select id="fd"><option value="">全部地區</option>${REGIONS.map(k => `<option ${F.d === k ? 'selected' : ''}>${k}</option>`).join('')}</select>` : `<select id="fd"><option value="">全部難度</option>${Object.keys(DIFF).map(k => `<option ${F.d === k ? 'selected' : ''}>${k}</option>`).join('')}</select>`}
     <select id="fs"><option value="">全部</option><option value="todo">還沒爬</option><option value="done">已登頂</option><option value="wish">想爬</option></select>
-    <select id="fp"><option value="">全部區域</option>${Object.entries(PARK).map(([k, v]) => `<option value="${k}">${v}</option>`).join('')}</select>
-    <select id="fo"><option value="rank">依排名</option><option value="diff">由易到難</option><option value="h">由矮到高</option></select>
+    ${mini ? '<select id="fp" hidden></select>' : `<select id="fp"><option value="">全部區域</option>${Object.entries(PARK).map(([k, v]) => `<option value="${k}">${v}</option>`).join('')}</select>`}
+    <select id="fo"><option value="rank">依編號</option>${mini ? '' : '<option value="diff">由易到難</option>'}<option value="h">由矮到高</option></select>
   </div><div class="plist" id="plist"></div>`;
   $('#fs').value = F.s; $('#fp').value = F.p; $('#fo').value = F.o;
   const draw = () => {
     Object.assign(F, { q: $('#q').value.trim(), d: $('#fd').value, s: $('#fs').value, p: $('#fp').value, o: $('#fo').value });
-    let L = PEAKS.filter(x => (!F.q || x.n.includes(F.q) || x.c.includes(F.q)) && (!F.d || x.d === F.d) && (!F.p || x.p === F.p)
+    let L = (mini ? MINI : PEAKS).filter(x => (!F.q || x.n.includes(F.q) || x.c.includes(F.q)) && (!F.d || (mini ? regionOf(x) === F.d : x.d === F.d)) && (mini || !F.p || x.p === F.p)
       && (!F.s || (F.s === 'done' ? S.done[x.r] : F.s === 'todo' ? !S.done[x.r] : S.wish.includes(x.r))));
     if (F.o === 'diff') L.sort((a, b) => DORD[a.d] - DORD[b.d] || a.h - b.h); else if (F.o === 'h') L.sort((a, b) => a.h - b.h);
     $('#plist').innerHTML = L.length ? L.map(x => `<a class="prow ${S.done[x.r] ? 'done' : ''}" href="#peak-${x.r}">
-      <span class="rkc">${x.r}</span>
+      <span class="rkc">${x.num}</span>
       <span class="nm">${esc(x.n)} ${FAME[x.r] ? `<span class="fame">${FAME[x.r]}</span>` : ''}${S.wish.includes(x.r) ? ' <span class="wishm">★</span>' : ''}
-        <small>${x.h.toLocaleString()} m · ${esc(PARK[x.p])}${S.done[x.r] ? ' · ' + esc(S.done[x.r].date || '') : ''}</small></span>
-      <span class="ends">${S.done[x.r] ? '<span class="donest">登頂</span>' : ''}<span class="stamp" style="--c:${DIFF[x.d].c}">${x.d}</span></span></a>`).join('')
+        <small>${x.h.toLocaleString()} m · ${esc(mini ? x.c : PARK[x.p])}${S.done[x.r] ? ' · ' + esc(S.done[x.r].date || '') : ''}</small></span>
+      <span class="ends">${S.done[x.r] ? '<span class="donest">登頂</span>' : ''}${mini ? '' : `<span class="stamp" style="--c:${DIFF[x.d].c}">${x.d}</span>`}</span></a>`).join('')
       : '<div class="empty">沒有符合的山，換個條件試試。</div>';
   };
   ['#q', '#fd', '#fs', '#fp', '#fo'].forEach(s => $(s).addEventListener('input', draw));
@@ -133,15 +137,16 @@ function routesBody() {
 // ---------- 單座山 ----------
 async function vPeak(r) {
   const x = BY[r]; if (!x) return vPeaks();
-  const d = S.done[r], route = ROUTES.filter(o => o.p.includes(r));
-  const story = STORY[r] || `${PARK[x.p]}${x.p === '-' ? '，' : '範圍內，'}位在${x.c}。海拔 ${x.h.toLocaleString()} 公尺，山頂一帶是${zoneOf(x.h)}。`;
+  const mini = isMini(r), d = S.done[r], route = mini ? [] : ROUTES.filter(o => o.p.includes(r));
+  const story = mini ? (MINI_STORY[x.num] || `${x.c}的小百岳，海拔 ${x.h.toLocaleString()} 公尺，山頂一帶是${zoneOf(x.h)}，多半是一天內可以來回的郊山步道。`)
+    : (STORY[r] || `${PARK[x.p]}${x.p === '-' ? '，' : '範圍內，'}位在${x.c}。海拔 ${x.h.toLocaleString()} 公尺，山頂一帶是${zoneOf(x.h)}。`);
   const mine = (await trips.all()).filter(t => (t.peaks || []).includes(r)).sort((a, b) => b.date.localeCompare(a.date));
   view.innerHTML = `
-  <section class="scene peakhero">${scene(x.r, x.h, { label: x.n + '的山景插畫' })}<a class="back" href="#peaks">← 百岳</a>
-    <div class="over wrap" style="width:100%"><p style="margin:0">百岳第 ${x.r} 座</p>
+  <section class="scene peakhero">${scene(x.r, x.h, { label: x.n + '的山景插畫' })}<a class="back" href="${mini ? '#peaks-mini' : '#peaks'}">← ${mini ? '小百岳' : '百岳'}</a>
+    <div class="over wrap" style="width:100%"><p style="margin:0">${mini ? '小百岳' : '百岳'}第 ${x.num} 座</p>
     <h1>${esc(x.n)}</h1>${FAME[x.r] ? `<p style="margin:8px 0 0"><span class="fame">${FAME[x.r]}</span></p>` : ''}${d ? '<span class="bigstamp">登頂<small>' + esc(d.date || '') + '</small></span>' : ''}</div></section>
   <div class="pad wrap">
-    <dl class="notes"><div><dt>海拔</dt><dd><b>${x.h.toLocaleString()}</b> 公尺</dd></div><div><dt>難度</dt><dd><span class="stamp" style="--c:${DIFF[x.d].c}">${x.d}</span> ${DIFF[x.d].t}，${DIFF[x.d].s}</dd></div><div><dt>位置</dt><dd>${esc(x.c)} · ${esc(PARK[x.p])}</dd></div></dl>
+    <dl class="notes"><div><dt>海拔</dt><dd><b>${x.h.toLocaleString()}</b> 公尺</dd></div>${mini ? '' : `<div><dt>難度</dt><dd><span class="stamp" style="--c:${DIFF[x.d].c}">${x.d}</span> ${DIFF[x.d].t}，${DIFF[x.d].s}</dd></div>`}<div><dt>位置</dt><dd>${esc(x.c)} · ${esc(mini ? regionOf(x) : PARK[x.p])}${mini && x.lat ? ' <a href="#map" id="onMap">在地圖上看 →</a>' : ''}</dd></div></dl>
     <p class="story">${esc(story)}</p>
     ${route.length ? `<p class="mute">常見組合：${route.map(o => `<a href="#peaks-routes">${esc(o.n)}</a>（${esc(o.d)}）`).join('、')}</p>` : ''}
     <div class="actions">
@@ -167,10 +172,11 @@ async function vPeak(r) {
   const u = $('#unmark'); if (u) u.onclick = () => confirm2(u, '再按一次確認取消', () => { delete S.done[r]; save(); vPeak(r); });
   $('#wish').onclick = () => { S.wish = S.wish.includes(r) ? S.wish.filter(v => v !== r) : [...S.wish, r]; save(); vPeak(r); };
   $('#writeTrip').onclick = () => { pendingPeaks = [r]; };
+  const om = $('#onMap'); if (om) om.onclick = () => { pendingCenter = x; };
 }
 
 // ---------- 手記 ----------
-let pendingPeaks = null, pendingTrack = null;
+let pendingPeaks = null, pendingTrack = null, pendingCenter = null;
 async function coverURL(t) {
   const id = (t.photoIds || [])[0]; if (!id) return null;
   const p = await photos.get(id); return p ? blobURL(p.thumb || p.blob) : null;
@@ -224,7 +230,7 @@ async function vTripEdit(id) {
   view.innerHTML = `<div class="pad wrap"><a href="${id ? '#trip-' + id : '#trips'}" class="mute">← 取消</a><h1 style="margin:8px 0 16px">${id ? '編輯手記' : '新的爬山手記'}</h1>
   <div class="f"><label for="tt">標題</label><input id="tt" value="${esc(t.title)}" placeholder="例如：第一次看到雲海的合歡山"></div>
   <div class="row2"><div class="f"><label for="td">出發日期</label><input id="td" type="date" value="${esc(t.date)}"></div><div class="f"><label for="te">下山日期</label><input id="te" type="date" value="${esc(t.endDate)}"></div></div>
-  <div class="f"><label>這趟登頂的百岳</label><input id="pq" type="search" placeholder="搜尋山名"><div class="pick" id="pick"></div></div>
+  <div class="f"><label>這趟登頂的山（百岳／小百岳）</label><input id="pq" type="search" placeholder="搜尋山名，例如：七星山"><div class="pick" id="pick"></div></div>
   <div class="row2"><div class="f"><label for="tw">天氣</label><input id="tw" value="${esc(t.weather)}" placeholder="晴、午後起霧"></div><div class="f"><label for="tm">同行夥伴</label><input id="tm" value="${esc(t.team)}"></div></div>
   <div class="f"><label for="tx">手記</label><textarea id="tx" placeholder="路況、花了多久、看到什麼、下次要注意的事…">${esc(t.text)}</textarea></div>
   <div class="f"><label>照片</label><div class="gallery" id="ph"></div><label class="btn" style="margin-top:8px">＋ 加入照片<input type="file" id="phin" accept="image/*" multiple hidden></label></div>
@@ -233,8 +239,8 @@ async function vTripEdit(id) {
   <div class="actions"><button class="btn p" id="sv">儲存手記</button>${id ? '<button class="btn" id="del">刪除這篇</button>' : ''}</div></div>`;
   const sel = new Set(t.peaks || []);
   const drawPick = () => { const q = $('#pq').value.trim();
-    $('#pick').innerHTML = PEAKS.filter(x => sel.has(x.r) || !q || x.n.includes(q)).sort((a, b) => sel.has(b.r) - sel.has(a.r) || a.r - b.r)
-      .map(x => `<button type="button" class="chip ${sel.has(x.r) ? 'on' : ''}" data-r="${x.r}">${sel.has(x.r) ? '✓ ' : ''}${esc(x.n)}</button>`).join(''); };
+    $('#pick').innerHTML = ALL.filter(x => sel.has(x.r) || (q ? x.n.includes(q) : x.kind === 'big')).sort((a, b) => sel.has(b.r) - sel.has(a.r) || a.r - b.r)
+      .map(x => `<button type="button" class="chip ${sel.has(x.r) ? 'on' : ''}" data-r="${x.r}">${sel.has(x.r) ? '✓ ' : ''}${x.kind === 'mini' ? '<small>小</small>' : ''}${esc(x.n)}</button>`).join('') + (q ? '' : '<p class="mute" style="width:100%;margin:4px 0 0">小百岳請用上面的搜尋找。</p>'); };
   $('#pq').oninput = drawPick; drawPick();
   $('#pick').onclick = e => { const b = e.target.closest('[data-r]'); if (!b) return; const r = +b.dataset.r; sel.has(r) ? sel.delete(r) : sel.add(r); drawPick(); };
   const drawPh = () => {
@@ -305,7 +311,7 @@ async function ensureMap() {
   if (M) return M;
   const wrap = document.createElement('div'); wrap.className = 'mapview'; wrap.id = 'mapwrap'; wrap.hidden = true;
   wrap.innerHTML = `<div id="map"></div>
-  <div class="mtop"><select id="lyr" aria-label="底圖">${Object.entries(LAYERS).map(([k, v]) => `<option value="${k}">${v.n}</option>`).join('')}</select></div>
+  <div class="mtop"><select id="lyr" aria-label="底圖">${Object.entries(LAYERS).map(([k, v]) => `<option value="${k}">${v.n}</option>`).join('')}</select><label class="mchk"><input type="checkbox" id="showMini"> 小百岳</label></div>
   <div class="fab" id="fab">
     <button id="loc" aria-label="定位我的位置"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/></svg></button>
     <button id="rec" aria-label="開始記錄軌跡"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="6" fill="currentColor"/></svg></button>
@@ -315,6 +321,16 @@ async function ensureMap() {
   const { map, setLayer } = makeMap($('#map', wrap), { layer: S.layer });
   M = { wrap, map, setLayer, tr: new Tracker(map), track: null, layer: null, fix: null, off: 0, alerted: false, min: false };
   $('#lyr').value = S.layer;
+  M.mini = L.layerGroup();
+  for (const x of MINI) if (x.lat) {
+    const got = !!S.done[x.r];
+    const mk = L.marker([x.lat, x.lon], { icon: L.divIcon({ className: 'mpk' + (got ? ' got' : ''), html: `<span>${x.num}</span>`, iconSize: [26, 24], iconAnchor: [13, 22] }) });
+    mk.bindPopup(`<b>${esc(x.n)}</b><br>${x.h.toLocaleString()} m · ${esc(x.c)}${got ? '<br>✓ 已登頂' : ''}<br><a href="#peak-${x.r}">看這座山 →</a><br><small>位置為約略座標</small>`);
+    mk.addTo(M.mini); x._mk = mk;
+  }
+  $('#showMini').checked = S.showMini !== false;
+  if ($('#showMini').checked) M.mini.addTo(map);
+  $('#showMini').onchange = e => { S.showMini = e.target.checked; save(); e.target.checked ? M.mini.addTo(map) : map.removeLayer(M.mini); };
   $('#lyr').onchange = e => { S.layer = e.target.value; save(); setLayer(S.layer); };
   $('#map').addEventListener('tilefail', () => PREVIEW || toast('地圖圖磚載入失敗：可能沒網路且這一區還沒下載，或換一種底圖試試', 5000));
   map.on('dragstart', () => { M.tr.follow = false; $('#loc').classList.remove('on'); });
@@ -410,6 +426,8 @@ async function vMap() {
   await ensureMap(); M.wrap.hidden = false;
   setTimeout(() => M.map.invalidateSize(), 50);
   if (S.active && (!M.track || M.track.id !== S.active)) await setActive(S.active); else sheet();
+  if (pendingCenter) { const x = pendingCenter; pendingCenter = null; if (!M.map.hasLayer(M.mini)) { M.mini.addTo(M.map); $('#showMini').checked = true; }
+    setTimeout(() => { M.tr.follow = false; M.map.setView([x.lat, x.lon], 14); x._mk && x._mk.openPopup(); }, 120); }
 }
 
 // ---------- 準備 ----------
@@ -482,6 +500,7 @@ async function route() {
   if (h === 'home') await vHome();
   else if (h === 'peaks') vPeaks('list');
   else if (h === 'peaks-routes') vPeaks('routes');
+  else if (h === 'peaks-mini') vPeaks('mini');
   else if ((m = h.match(/^peak-(\d+)$/))) await vPeak(+m[1]);
   else if (h === 'map') await vMap();
   else if (h === 'trips') await vTrips();
