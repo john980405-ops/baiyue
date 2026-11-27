@@ -1,5 +1,5 @@
 // 離線用：App 本體預先快取，地圖圖磚看過或下載過就留在手機
-const APP = 'baiyue-app-v4';
+const APP = 'baiyue-app-v5';
 const TILES = 'baiyue-tiles-v1';
 const FONTS = 'baiyue-fonts-v1';
 const SHELL = [
